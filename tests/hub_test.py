@@ -109,6 +109,39 @@ class TestScheduleCall(LimitedTestCase):
             eventlet.sleep(DELAY)
         self.assertEquals(lst, [1, 2, 3])
 
+    def test_prefer_io_to_timeout(self):
+        self.reset_timeout(10)
+
+        def server(listener):
+            sock, _addr = listener.accept()
+            s = sock.recv(1)
+            assert s == 't'
+            sock.send(s)
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+
+        def burner(t, n):
+            for _ in xrange(n):
+                start = time.time()
+                while time.time() - start < t:
+                    pass
+                eventlet.sleep(0)
+
+        server_sock = eventlet.listen(('', 0))
+        server_thread = eventlet.spawn(server, server_sock)
+        eventlet.sleep(0)
+        burner_thread = eventlet.spawn(burner, 1, 2)
+
+        with eventlet.Timeout(0.5):
+            sock = eventlet.connect(server_sock.getsockname())
+        sock.send('t')
+        with eventlet.Timeout(0.5):
+            s = sock.recv(1)
+        assert s == 't'
+
+        server_thread.wait()
+        burner_thread.wait()
+
 
 class TestDebug(LimitedTestCase):
 

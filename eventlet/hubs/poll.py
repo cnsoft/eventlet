@@ -27,7 +27,7 @@ class Hub(BaseHub):
         listener = super(Hub, self).add(evtype, fileno, cb)
         self.register(fileno, new=True)
         return listener
-    
+
     def remove(self, listener):
         super(Hub, self).remove(listener)
         self.register(listener.fileno)
@@ -47,7 +47,7 @@ class Hub(BaseHub):
                         self.modify(fileno, mask)
                     except (IOError, OSError):
                         self.poll.register(fileno, mask)
-            else: 
+            else:
                 try:
                     self.poll.unregister(fileno)
                 except (KeyError, IOError, OSError):
@@ -80,13 +80,23 @@ class Hub(BaseHub):
             if seconds:
                 sleep(seconds)
             return
+
+        again = self.wait_step(seconds)
+        if again:
+            self.wait_step(0)
+
+    def wait_step(self, seconds):
+        readers = self.listeners[READ]
+        writers = self.listeners[WRITE]
+
         try:
             presult = self.do_poll(seconds)
         except (IOError, select.error), e:
             if get_errno(e) == errno.EINTR:
-                return
+                return True
             raise
-        SYSTEM_EXCEPTIONS = self.SYSTEM_EXCEPTIONS
+        if len(presult) == 0:
+            return False
 
         if self.debug_blocking:
             self.block_detect_pre()
@@ -103,12 +113,12 @@ class Hub(BaseHub):
                 if event & EXC_MASK:
                     readers.get(fileno, noop).cb(fileno)
                     writers.get(fileno, noop).cb(fileno)
-            except SYSTEM_EXCEPTIONS:
+            except self.SYSTEM_EXCEPTIONS:
                 raise
             except:
                 self.squelch_exception(fileno, sys.exc_info())
                 clear_sys_exc_info()
-        
+
         if self.debug_blocking:
             self.block_detect_post()
-
+        return True
