@@ -1,5 +1,3 @@
-import errno
-from eventlet.support import get_errno
 from eventlet import patcher
 time = patcher.original('time')
 select = patcher.original("select")
@@ -55,3 +53,20 @@ class Hub(poll.Hub):
 
     def do_poll(self, seconds):
         return self.poll.poll(seconds)
+
+    def after_fork(self, pid):
+        # fork causes problems for epoll hubs because the parent and child
+        # processes end up sharing the same kernel instance of epoll. after the
+        # fork, when the processes create new file descriptors and register them
+        # with the hub, they could have the same value, i.e., the same file
+        # descriptor number, but point to completely different things. the
+        # solution is to reset the hub in the child process after the fork,
+        # giving it its own instance of epoll.
+        if pid == 0: # in child
+            self.poll.close()
+            self.poll = epoll()
+            self.listeners = {self.READ: {}, self.WRITE: {}}
+            self.secondaries = {self.READ: {}, self.WRITE: {}}
+            self.timers = []
+            self.next_timers = []
+            self.timers_canceled = 0

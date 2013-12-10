@@ -9,7 +9,7 @@ from eventlet import hubs
 from eventlet.patcher import slurp_properties
 
 __all__ = os_orig.__all__
-__patched__ = ['fdopen', 'read', 'write', 'wait', 'waitpid']
+__patched__ = ['fdopen', 'fork', 'read', 'write', 'wait', 'waitpid']
 
 slurp_properties(os_orig, globals(), 
     ignore=__patched__, srckeys=dir(os_orig))
@@ -80,5 +80,13 @@ def waitpid(pid, options):
             if rpid and status >= 0:
                 return rpid, status
             greenthread.sleep(0.01)
+
+__original_fork__ = os_orig.fork
+def fork():
+    pid = __original_fork__()
+    hub = hubs.get_hub()
+    if hasattr(hub, 'after_fork'):
+        hub.after_fork(pid)
+    return pid
 
 # TODO: open
