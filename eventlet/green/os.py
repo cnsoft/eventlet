@@ -9,7 +9,7 @@ from eventlet import hubs
 from eventlet.patcher import slurp_properties
 
 __all__ = os_orig.__all__
-__patched__ = ['fdopen', 'fork', 'read', 'write', 'wait', 'waitpid']
+__patched__ = ['fdopen', 'read', 'write', 'wait', 'waitpid']
 
 slurp_properties(os_orig, globals(), 
     ignore=__patched__, srckeys=dir(os_orig))
