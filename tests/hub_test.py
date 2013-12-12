@@ -297,13 +297,13 @@ class TestFork(ProcessBase):
 
     def test_fork(self):
         new_mod = """
+import os
 import eventlet
 import eventlet.hubs
-import eventlet.green.os
 
 eventlet.hubs.get_hub()  # create the hub *before* forking
 server = eventlet.listen(('localhost', 12345))
-eventlet.green.os.fork()
+os.fork()
 try:
     eventlet.Timeout(0.5)
     new_sock, address = server.accept()

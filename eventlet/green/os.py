@@ -81,12 +81,4 @@ def waitpid(pid, options):
                 return rpid, status
             greenthread.sleep(0.01)
 
-__original_fork__ = os_orig.fork
-def fork():
-    pid = __original_fork__()
-    hub = hubs.get_hub()
-    if hasattr(hub, 'after_fork'):
-        hub.after_fork(pid)
-    return pid
-
 # TODO: open
